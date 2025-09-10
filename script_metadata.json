@@ -1,0 +1,13 @@
+{
+  "createdBy": "priyankvamja",
+  "updatedBy": "priyankvamja",
+  "priority": 7,
+  "frequency": [
+    4,
+    8
+  ],
+  "hardReset": 0,
+  "softReset": 0,
+  "resume": 0,
+  "run": 1
+}

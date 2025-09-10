@@ -11,9 +11,10 @@ from core.common import get_hash, tag_text
 from core.common.frameworks.google_drive import download_google_folder_files
 from core.common.selenium import make_chrome_driver
 
+
 class Main(BidScraper):
     settings = {
-        "version": "1.0.5",
+        "version": "1.0.7",
         "script_name": "fairfield_suisun_usd",
         "base_url": "https://www.fsusd.org",
         "created_by": "jedmonson@govspend.com",
@@ -32,24 +33,26 @@ class Main(BidScraper):
             logging.warning("This script relies on parsing the dueDates from downloaded files!")
             self.settings["document_download"] = True
         driver.get(self.urljoin(py_.get(self, "settings.index_url")))
-        button = driver.find_element_by_css_selector('button#section-2e968db0-6196-4d98-81a9-f5edad28662c')
+        button = driver.find_element_by_css_selector(
+            "button#section-2e968db0-6196-4d98-81a9-f5edad28662c"
+        )
         button.click()
-        button2 = driver.find_element_by_css_selector('button#section-f66101bd-a8fb-4a06-a963-3ed33f63bcda')
+        button2 = driver.find_element_by_css_selector(
+            "button#section-f66101bd-a8fb-4a06-a963-3ed33f63bcda"
+        )
         button2.click()
         self.index = driver.page_source
         self.soup = bs(self.index, "html5lib")
 
     def fetch_rows(self):
         if self.status == "closed":
-            yield from lbl if (
-                lbl := re.findall(
-                    r'buttons\:\[\{link:\"(https:.*?)\"\,title:\"(.*?)?"', self.index
-                )
-            ) else logging.error("No rows found")
+            return
         else:
             yield from [
                 (i.get("href"), tag_text(i))
-                for i in self.soup.select('.row.ts-right-sidebar-row.standard-row .column .content-section-dropzone > .block a')
+                for i in self.soup.select(
+                    ".row.ts-right-sidebar-row.standard-row .column .content-section-dropzone > .block a"
+                )
                 if "https://drive.google.com/" in i.get("href")
             ]
 
@@ -92,10 +95,13 @@ class Main(BidScraper):
                 return dump, dd
 
         bid.sourceURL = self.urljoin(f'{self.settings["index_url"]}#{bid.bidNumber}')
-        bid.title = py_.clean(self.title)
+        title = py_.clean(self.title)
         bid.description = f"<h2>{bid.title}</h2>"
-        bno = re.search(r"((RFP|BID|RFQ-P)\s?\:? \#?[0-9]{4}-[0-9]{2})", bid.title)
-        bid.bidNumber = bno.group(1)
+        if bno := re.search(r"((RFP|BID|RFQ-P)\s?\:?\#?\s?[0-9]{4}-[0-9]{2})", title):
+            bid.bidNumber = bno.group(1)
+        elif bnum := re.search(r"(\d{4}\-\d{2})", title):
+            bid.bidNumber = bnum.group(1)
+        bid.title = py_.clean(title.replace(bid.bidNumber, ""))
         if detail_res := self.get(bid.sourceURL):
             bid_page = bs(detail_res.text, "html5lib")
             description, dueDate = get_due_date_from_file(bid_page)
